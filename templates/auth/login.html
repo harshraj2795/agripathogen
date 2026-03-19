@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — AGRI-PATHogen{% endblock %}
+{% block content %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px">
+<div style="width:100%;max-width:400px">
+
+  <div style="text-align:center;margin-bottom:32px">
+    <h1 style="font-family:'DM Serif Display',serif;font-size:36px;background:linear-gradient(135deg,#e8f0ec,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">🌿 AGRI-PATHogen</h1>
+    <p style="color:var(--muted);font-size:13px;margin-top:8px;font-family:'DM Mono',monospace">// Sign in to your account</p>
+  </div>
+
+  <div class="card">
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        {{ form.email(class='form-input', placeholder='you@example.com') }}
+        {% for e in form.email.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        {{ form.password(class='form-input', placeholder='Your password') }}
+        {% for e in form.password.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--muted)">
+          {{ form.remember_me(style='accent-color:var(--accent);width:15px;height:15px') }}
+          Remember Me
+        </label>
+        <a href="{{ url_for('auth.forgot_password') }}" style="font-size:13px;color:var(--accent);text-decoration:none">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:13px;font-size:14px">
+        Sign In →
+      </button>
+    </form>
+  </div>
+
+  <p style="text-align:center;margin-top:20px;font-size:13px;color:var(--muted)">
+    Don't have an account?
+    <a href="{{ url_for('auth.signup') }}" style="color:var(--accent);text-decoration:none;font-weight:600">Sign Up</a>
+  </p>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block title %}History — AGRI-PATHogen{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto;padding:32px 20px">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h2 style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--text)">Scan History</h2>
+      <p style="color:var(--muted);font-size:13px;font-family:'DM Mono',monospace;margin-top:4px">// {{ scans|length }} scan{{ 's' if scans|length != 1 }} found</p>
+    </div>
+    <a href="{{ url_for('main.scan') }}" class="btn btn-primary">+ New Scan</a>
+  </div>
+
+  <!-- Crop filter -->
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+    <a href="{{ url_for('main.history') }}"
+       style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid;transition:all .2s;
+              {% if not active_crop %}background:var(--accent-dim);border-color:var(--border2);color:var(--accent)
+              {% else %}background:transparent;border-color:var(--border);color:var(--muted){% endif %}">
+      All
+    </a>
+    {% for crop in crops %}
+    <a href="{{ url_for('main.history', crop=crop) }}"
+       style="padding:6px 16px;border-radius:99px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid;transition:all .2s;
+              {% if active_crop == crop %}background:var(--accent-dim);border-color:var(--border2);color:var(--accent)
+              {% else %}background:transparent;border-color:var(--border);color:var(--muted){% endif %}">
+      {{ crop }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Scan list -->
+  {% if scans %}
+  <div style="display:flex;flex-direction:column;gap:12px" id="scan-list">
+    {% for s in scans %}
+    <div class="card slide-up" id="scan-card-{{ s.id }}" style="padding:0;overflow:hidden">
+
+      <!-- Top row -->
+      <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:700;color:var(--text)">{{ s.disease }}</span>
+            <span class="badge badge-{{ s.severity }}">{{ s.severity }}</span>
+            <span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">{{ s.crop }}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:4px">
+            {{ s.scanned_at.strftime('%d %B %Y at %H:%M') }} · {{ s.confidence }}% confidence
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <a href="{{ url_for('main.download_report', scan_id=s.id) }}" class="btn btn-ghost btn-sm" title="Download PDF Report">↓ PDF</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteScan({{ s.id }})" title="Delete scan">🗑</button>
+        </div>
+      </div>
+
+      <!-- Note row -->
+      <div style="padding:12px 20px;background:var(--surface2)">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'DM Mono',monospace;padding-top:2px;flex-shrink:0">Note</span>
+          <div style="flex:1">
+            <span id="note-text-{{ s.id }}" style="font-size:13px;color:{{ 'var(--text)' if s.note else 'var(--muted)' }};font-style:{{ 'normal' if s.note else 'italic' }}">
+              {{ s.note or 'No note added' }}
+            </span>
+            <span style="margin-left:10px">
+              <button onclick="showNoteEdit({{ s.id }})" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-family:'DM Mono',monospace">edit</button>
+            </span>
+          </div>
+        </div>
+        <!-- Inline note edit form (hidden by default) -->
+        <div id="note-form-{{ s.id }}" style="display:none;margin-top:10px">
+          <textarea id="note-input-{{ s.id }}" class="form-input" rows="2" maxlength="300" placeholder="e.g. Field 3, north section">{{ s.note or '' }}</textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-primary btn-sm" onclick="saveNote({{ s.id }})">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="hideNoteEdit({{ s.id }})">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Treatment summary (collapsible) -->
+      <div style="padding:10px 20px">
+        <button onclick="toggleTreatment({{ s.id }})" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:.04em">
+          ▶ Show treatment advice
+        </button>
+        <div id="treatment-{{ s.id }}" style="display:none;margin-top:12px">
+          {% set t = {
+            'Corn Rust':              {'immediate':'Apply propiconazole fungicide. Remove infected leaves.','prevention':'Plant resistant varieties. Avoid overhead irrigation.'},
+            'Corn Healthy':           {'immediate':'No action needed.','prevention':'Maintain regular fertilisation.'},
+            'Pepper Bacterial Spot':  {'immediate':'Apply copper-based bactericide every 7 days.','prevention':'Use certified seeds. Rotate crops.'},
+            'Pepper Healthy':         {'immediate':'No action needed.','prevention':'Water at soil level. Add mulch.'},
+            'Potato Early Blight':    {'immediate':'Apply chlorothalonil or mancozeb fungicide.','prevention':'Avoid overhead watering. Rotate crops.'},
+            'Potato Late Blight':     {'immediate':'Apply metalaxyl + mancozeb immediately. Destroy infected plants.','prevention':'Use certified seed potatoes.'},
+            'Potato Healthy':         {'immediate':'No action needed.','prevention':'Monitor weekly for lesions.'},
+            'Tomato Early Blight':    {'immediate':'Remove lower leaves. Apply copper fungicide.','prevention':'Mulch soil. Water at base.'},
+            'Tomato Late Blight':     {'immediate':'Apply cymoxanil + mancozeb immediately.','prevention':'Avoid overhead irrigation. Use resistant varieties.'},
+            'Tomato Healthy':         {'immediate':'No action needed.','prevention':'Stake plants for air circulation.'},
+          } %}
+          {% set advice = t.get(s.disease, {'immediate':'Consult an agronomist.','prevention':'Monitor regularly.'}) %}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">💊 Immediate</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.5">{{ advice.immediate }}</div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px">
+              <div style="font-size:10px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">🌱 Prevention</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.5">{{ advice.prevention }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div style="text-align:center;padding:80px 20px">
+    <div style="font-size:48px;margin-bottom:16px">🌿</div>
+    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">No scans yet</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:24px">
+      {% if active_crop %}No {{ active_crop }} scans found.{% else %}Run your first diagnostic scan to see history here.{% endif %}
+    </div>
+    <a href="{{ url_for('main.scan') }}" class="btn btn-primary">Start First Scan</a>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function toggleTreatment(id) {
+  const el  = document.getElementById('treatment-'+id);
+  const btn = el.previousElementSibling;
+  const open = el.style.display === 'block';
+  el.style.display  = open ? 'none' : 'block';
+  btn.textContent   = (open ? '▶' : '▼') + ' ' + (open ? 'Show' : 'Hide') + ' treatment advice';
+}
+
+function showNoteEdit(id) {
+  document.getElementById('note-form-'+id).style.display = 'block';
+  document.getElementById('note-input-'+id).focus();
+}
+
+function hideNoteEdit(id) {
+  document.getElementById('note-form-'+id).style.display = 'none';
+}
+
+async function saveNote(id) {
+  const note = document.getElementById('note-input-'+id).value;
+  const fd   = new FormData();
+  fd.append('note', note);
+  const res  = await fetch(`/scan/${id}/note`, { method:'POST', body:fd });
+  const data = await res.json();
+  if (data.ok) {
+    const span = document.getElementById('note-text-'+id);
+    span.textContent   = data.note || 'No note added';
+    span.style.color   = data.note ? 'var(--text)' : 'var(--muted)';
+    span.style.fontStyle = data.note ? 'normal' : 'italic';
+    hideNoteEdit(id);
+  }
+}
+
+async function deleteScan(id) {
+  if (!confirm('Delete this scan? This cannot be undone.')) return;
+  const res = await fetch(`/scan/${id}/delete`, {
+    method:'POST',
+    headers:{'X-Requested-With':'XMLHttpRequest'}
+  });
+  const data = await res.json();
+  if (data.ok) {
+    const card = document.getElementById('scan-card-'+id);
+    card.style.transition = 'opacity .3s,transform .3s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(20px)';
+    setTimeout(() => card.remove(), 300);
+  }
+}
+</script>
+{% endblock %}
