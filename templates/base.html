@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}AGRI-PATHogen AI{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0b120e; --surface:#111a14; --surface2:#172019;
+  --border:rgba(0,255,153,0.12); --border2:rgba(0,255,153,0.25);
+  --accent:#00ff99; --accent2:#00cc7a; --accent-dim:rgba(0,255,153,0.08);
+  --text:#e8f0ec; --muted:#7a9488;
+  --danger:#ff5c5c; --warn:#f5a623; --good:#00e87a;
+  --radius:14px; --radius-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,153,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,153,0.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+.page{position:relative;z-index:1;flex:1;display:flex;flex-direction:column}
+
+/* NAV */
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;height:56px;gap:8px;position:sticky;top:0;z-index:100}
+.nav-brand{font-family:'DM Serif Display',serif;font-size:18px;background:linear-gradient(135deg,#e8f0ec,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-right:auto}
+.nav-link{color:var(--muted);text-decoration:none;font-size:13px;font-weight:600;padding:6px 12px;border-radius:var(--radius-sm);transition:all .2s;letter-spacing:.04em}
+.nav-link:hover,.nav-link.active{color:var(--accent);background:var(--accent-dim)}
+.nav-divider{width:1px;height:20px;background:var(--border);margin:0 4px}
+
+/* FLASH */
+.flashes{padding:12px 24px 0;display:flex;flex-direction:column;gap:8px}
+.flash{padding:12px 16px;border-radius:var(--radius-sm);font-size:13px;border:1px solid}
+.flash-success{background:rgba(0,232,122,0.08);border-color:rgba(0,232,122,0.3);color:var(--good)}
+.flash-danger {background:rgba(255,92,92,0.08); border-color:rgba(255,92,92,0.3); color:var(--danger)}
+.flash-warning{background:rgba(245,166,35,0.08);border-color:rgba(245,166,35,0.3);color:var(--warn)}
+.flash-info   {background:var(--accent-dim);     border-color:var(--border2);      color:var(--accent)}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:12px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border-radius:var(--radius-sm);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;border:none;text-decoration:none;letter-spacing:.04em}
+.btn-primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#0b120e}
+.btn-primary:hover{box-shadow:0 4px 16px rgba(0,255,153,0.25);transform:translateY(-1px)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(255,92,92,0.1);border:1px solid rgba(255,92,92,0.3);color:var(--danger)}
+.btn-danger:hover{background:rgba(255,92,92,0.2)}
+.btn-sm{padding:6px 12px;font-size:11px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* FORM */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:6px}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;transition:border-color .2s;outline:none}
+.form-input:focus{border-color:var(--accent2)}
+.form-input::placeholder{color:var(--muted)}
+textarea.form-input{resize:vertical;min-height:70px}
+.form-error{font-size:12px;color:var(--danger);margin-top:4px;font-family:'DM Mono',monospace}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-family:'DM Mono',monospace}
+.badge-high  {background:rgba(255,92,92,0.1); color:var(--danger);border:1px solid rgba(255,92,92,0.25)}
+.badge-medium{background:rgba(245,166,35,0.1);color:var(--warn);  border:1px solid rgba(245,166,35,0.25)}
+.badge-low   {background:rgba(0,232,122,0.1); color:var(--good);  border:1px solid rgba(0,232,122,0.25)}
+
+/* SPINNER */
+.spinner{width:18px;height:18px;border:2px solid rgba(11,18,14,.3);border-top-color:#0b120e;border-radius:50%;animation:spin .8s linear infinite;display:none;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.slide-up{animation:slideUp .35s ease}
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="page">
+{% if current_user.is_authenticated %}
+<nav>
+  <span class="nav-brand">🌿 AGRI-PATHogen</span>
+  <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">Dashboard</a>
+  <a href="{{ url_for('main.scan') }}"      class="nav-link {% if request.endpoint == 'main.scan' %}active{% endif %}">Scan</a>
+  <a href="{{ url_for('main.history') }}"   class="nav-link {% if request.endpoint == 'main.history' %}active{% endif %}">History</a>
+  <a href="{{ url_for('main.profile') }}"   class="nav-link {% if request.endpoint == 'main.profile' %}active{% endif %}">Profile</a>
+  <div class="nav-divider"></div>
+  <a href="{{ url_for('auth.logout') }}" class="nav-link">Logout</a>
+</nav>
+{% endif %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="flashes">
+{% for category, message in messages %}
+<div class="flash flash-{{ category }}">{{ message }}</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<main>{% block content %}{% endblock %}</main>
+</div>
+</body>
+</html>
